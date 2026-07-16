@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>פורטל חתונת הזהב והכסף המשפחתי</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Assistant:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Quill.js Editor (Rich Text) -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Assistant', 'Heebo', sans-serif;
+            min-height: 100vh;
+            transition: background 0.5s ease-in-out;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.45);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+        }
+        .glass-dark {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.35);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.5);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="text-gray-800 antialiased p-0 m-0 bg-slate-100">
+
+    <!-- מסך שער וחיבור בגוגל (Google Login Gate) -->
+    <div id="gate-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/85 p-4">
+        <div class="glass-dark max-w-md w-full rounded-2xl p-8 shadow-2xl text-center border border-white/40">
+            <div class="mb-6">
+                <!-- טעינה מושהית ללוגו הראשוני -->
+                <img id="gate-logo" data-src="assets/logo.jpg" alt="לוגו משפחתי" class="w-24 h-24 mx-auto rounded-full object-cover mb-4 shadow-md border-2 border-white/80 hidden">
+                <h1 class="text-3xl font-extrabold text-slate-800">חגיגת היובל של ההורים</h1>
+                <p class="text-gray-600 mt-2 text-sm">פורטל משפחתי סגור לתכנון האירוע</p>
+            </div>
+
+            <div class="space-y-4">
+                <button onclick="signInWithGoogle()" class="w-full bg-white hover:bg-gray-50 text-gray-700 font-bold py-3 px-4 rounded-xl shadow-md border border-gray-200 transition duration-200 flex items-center justify-center gap-3">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" class="w-5 h-5" alt="Google">
+                    <span>התחברות מהירה עם חשבון גוגל</span>
+                </button>
+                <p id="auth-error" class="text-red-500 text-sm hidden">אימייל זה אינו מורשה גישה למערכת.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- לוח הבקרה הראשי -->
+    <div id="app-container" class="hidden min-h-screen flex flex-col max-w-md mx-auto bg-white/20 shadow-xl relative pb-20">
+        
+        <!-- כותרת עליונה וספירה לאחור -->
+        <header class="glass p-4 sticky top-0 z-40 border-b border-white/30">
+            <div class="flex justify-between items-center mb-3">
+                <div class="flex items-center space-x-2 space-x-reverse">
+                    <span id="user-badge" class="px-3 py-1 text-white text-xs font-bold rounded-full"></span>
+                    <span class="text-sm font-semibold text-gray-700">שלום, שותפים לדרך! ❤️</span>
+                </div>
+                <button onclick="logout()" class="text-gray-500 hover:text-red-500 text-xs flex items-center gap-1">
+                    <i class="fa-solid fa-right-from-bracket"></i> התנתק
+                </button>
+            </div>
+            
+            <div class="bg-white/60 rounded-xl p-3 text-center shadow-inner border border-white/50">
+                <div id="countdown" class="text-lg font-extrabold text-slate-800 flex justify-center gap-3"></div>
+            </div>
+        </header>
+
+        <!-- תפריט ניווט עליון -->
+        <nav class="flex border-b border-gray-200 overflow-x-auto bg-white/40 sticky top-36 z-30 whitespace-nowrap custom-scrollbar">
+            <button onclick="switchTab('todo')" id="tab-todo" class="px-4 py-3 text-sm font-bold border-b-2 border-transparent text-gray-600 hover:text-blue-600 flex items-center gap-1">
+                <i class="fa-solid fa-list-check"></i> משימות
+            </button>
+            <button onclick="switchTab('document')" id="tab-document" class="px-4 py-3 text-sm font-bold border-b-2 border-transparent text-gray-600 hover:text-blue-600 flex items-center gap-1">
+                <i class="fa-solid fa-pen-nib"></i> העלון המשפחתי
+            </button>
+            <button onclick="switchTab('files')" id="tab-files" class="px-4 py-3 text-sm font-bold border-b-2 border-transparent text-gray-600 hover:text-blue-600 flex items-center gap-1">
+                <i class="fa-solid fa-folder-open"></i> קבצים ורקעים
+            </button>
+            
+            <span id="dynamic-tabs-container" class="flex"></span>
+            
+            <button onclick="showAddCategoryModal()" class="px-4 py-3 text-sm font-bold text-green-600 hover:text-green-800 flex items-center gap-1">
+                <i class="fa-solid fa-circle-plus"></i> נושא
+            </button>
+        </nav>
+
+        <!-- אזורי התוכן -->
+        <main class="flex-grow p-4">
+            
+            <!-- כרטיסיית משימות -->
+            <div id="panel-todo" class="tab-panel space-y-4">
+                <div class="glass rounded-xl p-4 shadow">
+                    <h3 class="font-bold text-lg mb-3 flex items-center gap-2"><i class="fa-solid fa-list-check text-blue-600"></i> משימות וסידורים</h3>
+                    <div class="flex gap-2">
+                        <input type="text" id="new-todo-text" placeholder="מה צריך לעשות?" class="flex-grow px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none">
+                        <button onclick="addTodoItem()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold">הוספה</button>
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">לביצוע:</h4>
+                    <div id="todo-list-active" class="space-y-2"></div>
+                    <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider pt-3">הושלמו:</h4>
+                    <div id="todo-list-completed" class="space-y-2 opacity-75"></div>
+                </div>
+            </div>
+
+            <!-- כרטיסיית העלון המשפחתי (סנכרון GitHub) -->
+            <div id="panel-document" class="tab-panel space-y-4 hidden">
+                <div class="glass rounded-xl p-4 shadow space-y-3">
+                    <h3 class="font-bold text-lg flex items-center gap-2"><i class="fa-solid fa-pen-nib text-purple-600"></i> טקסטים לעלון</h3>
+                    <div class="bg-white rounded-lg">
+                        <div id="editor-container" style="height: 250px;"></div>
+                    </div>
+                    <div class="flex justify-between items-center pt-2">
+                        <button onclick="saveDocumentToGitHub()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center gap-1">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> שמור גרסה
+                        </button>
+                        <button onclick="toggleVersionHistory()" class="text-gray-600 hover:text-gray-800 text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-clock-rotate-left"></i> היסטוריה
+                        </button>
+                    </div>
+                </div>
+                <div id="version-history-panel" class="glass rounded-xl p-4 shadow hidden">
+                    <div id="commits-list" class="space-y-2 max-h-40 overflow-y-auto custom-scrollbar text-xs"></div>
+                </div>
+            </div>
+
+            <!-- כרטיסיית קבצים משותפים וניהול רקעים -->
+            <div id="panel-files" class="tab-panel space-y-4 hidden">
+                <div class="glass rounded-xl p-4 shadow space-y-3">
+                    <h3 class="font-bold text-lg flex items-center gap-2"><i class="fa-solid fa-cloud-arrow-up text-amber-600"></i> העלאת קבצים לאתר (עד 100MB)</h3>
+                    
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">בחר ייעוד לקובץ:</label>
+                        <select id="upload-destination" class="w-full px-3 py-2 border rounded-lg text-sm mb-3 focus:outline-none">
+                            <option value="general">קובץ משותף כללי (PDF, מצגת, תמונות)</option>
+                            <option value="background">תמונת רקע חדשה לאתר</option>
+                        </select>
+                    </div>
+
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-blue-500 bg-white/50" onclick="document.getElementById('file-input').click()">
+                        <i class="fa-solid fa-file-arrow-up text-3xl text-gray-400 mb-2"></i>
+                        <p class="text-xs text-gray-600">לחץ לבחירת קובץ להעלאה</p>
+                        <input type="file" id="file-input" class="hidden" onchange="handleFileUpload(event)">
+                    </div>
+                    
+                    <div id="upload-progress" class="hidden text-xs text-blue-600 font-semibold animate-pulse">
+                        מעלה קובץ ל-GitHub, אנא המתן...
+                    </div>
+                </div>
+
+                <div class="glass rounded-xl p-4 shadow space-y-2">
+                    <h4 class="font-bold text-sm text-gray-700 border-b pb-1">קבצים שהועלו לאתר:</h4>
+                    <div id="shared-files-list" class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar text-xs">
+                        <!-- רשימת קבצים מתוך Firestore -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- כרטיסיית צ'אט דינמי -->
+            <div id="panel-chat" class="tab-panel flex flex-col h-[50vh] hidden">
+                <div class="flex-grow overflow-y-auto custom-scrollbar space-y-3 p-2 bg-slate-900/5 rounded-xl border border-white/20 mb-3" id="chat-messages-container"></div>
+                <div class="flex gap-2">
+                    <input type="text" id="chat-message-input" placeholder="הקלידו הודעה..." class="flex-grow px-3 py-2 rounded-xl border border-gray-300 text-sm focus:outline-none bg-white/80" onkeypress="handleChatEnter(event)">
+                    <button onclick="sendChatMessage()" class="bg-emerald-600 hover:bg-emerald-700 text-white p-3 rounded-xl flex items-center justify-center">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- מודל יצירת קטגוריה -->
+        <div id="category-modal" class="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+            <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+                <h3 class="text-lg font-bold text-gray-800 mb-3">יצירת נושא דיון חדש</h3>
+                <input type="text" id="new-category-name" placeholder="שם הנושא..." class="w-full px-3 py-2 border rounded-lg mb-4 text-sm">
+                <div class="flex justify-end gap-2 text-sm">
+                    <button onclick="hideAddCategoryModal()" class="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-lg">ביטול</button>
+                    <button onclick="createCategory()" class="px-4 py-2 bg-green-600 text-white rounded-lg font-bold">צור</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        // ==========================================
+        // 1. הגדרות ורשימת אחים מורשים (Configuration)
+        // ==========================================
+        const CONFIG = {
+            eventDate: new Date("Nov 15, 2025 19:30:00").getTime(),
+            // מפה המקשרת בין אימייל הגוגל של האח לבין השם והצבע שלו
+            allowedBrothers: {
+                "reuven@gmail.com": { name: "ראובן", color: "#3b82f6" },
+                "shimon@gmail.com": { name: "שמעון", color: "#10b981" },
+                "levi@gmail.com": { name: "לוי", color: "#f59e0b" },
+                "yehuda@gmail.com": { name: "יהודה", color: "#ef4444" }
+            },
+            github: {
+                token: "YOUR_GITHUB_PERSONAL_ACCESS_TOKEN", // החליפו בטוקן ה-GitHub שלכם
+                owner: "YOUR_GITHUB_USERNAME",
+                repo: "YOUR_REPO_NAME"
+            }
+        };
+
+        // קונפיגורציית פיירבייס שסיפקת
+        const firebaseConfig = {
+            apiKey: "AIzaSyBvYn-lVJoDpLTRJqiNIiYd12yEcfBgMz8",
+            authDomain: "chatuna-2f886.firebaseapp.com",
+            projectId: "chatuna-2f886",
+            storageBucket: "chatuna-2f886.firebasestorage.app",
+            messagingSenderId: "993368698482",
+            appId: "1:993368698482:web:68a719b033a17f4a245ceb"
+        };
+
+        // אתחול Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        let currentUser = null; // ישמור את אובייקט האח הפעיל
+        let currentTab = "todo";
+        let activeCategoryId = null;
+        let quillEditor = null;
+        let currentFileSha = null;
+
+        let unsubscribeCategories = null;
+        let unsubscribeTodos = null;
+        let unsubscribeChat = null;
+        let unsubscribeFiles = null;
+
+        // ==========================================
+        // 2. טעינה מושהית (Lazy Loading) ומניעת איטיות
+        // ==========================================
+        window.addEventListener('DOMContentLoaded', () => {
+            initCountdown();
+            initQuillEditor();
+            
+            // טעינת תמונות כבדות רק לאחר טעינת שלד האתר
+            setTimeout(() => {
+                const gateLogo = document.getElementById('gate-logo');
+                if (gateLogo) {
+                    gateLogo.src = gateLogo.getAttribute('data-src');
+                    gateLogo.classList.remove('hidden');
+                }
+            }, 300);
+
+            // האזנה למצב החיבור של המשתמש בגוגל
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    handleUserAuthentication(user);
+                } else {
+                    showGate();
+                }
+            });
+        });
+
+        // האזנה להגדרת רקע דינמי מהמסד (Firestore)
+        function listenToThemeSettings() {
+            db.collection('settings').doc('theme').onSnapshot(doc => {
+                if (doc.exists && doc.data().backgroundImageUrl) {
+                    document.body.style.backgroundImage = `url('${doc.data().backgroundImageUrl}')`;
+                    document.body.style.backgroundSize = 'cover';
+                    document.body.style.backgroundPosition = 'center';
+                    document.body.style.backgroundAttachment = 'fixed';
+                } else {
+                    // רקע מקומי כברירת מחדל במידה ולא הועלה רקע לשרת
+                    document.body.style.backgroundImage = "url('assets/1.jpg')";
+                    document.body.style.backgroundSize = 'cover';
+                    document.body.style.backgroundPosition = 'center';
+                    document.body.style.backgroundAttachment = 'fixed';
+                }
+            });
+        }
+
+        // ==========================================
+        // 3. אימות והתחברות אוטומטית (Google Auth)
+        // ==========================================
+        function signInWithGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider)
+                .then(result => {
+                    handleUserAuthentication(result.user);
+                })
+                .catch(err => {
+                    console.error("שגיאה בהתחברות גוגל: ", err);
+                });
+        }
+
+        function handleUserAuthentication(firebaseUser) {
+            const email = firebaseUser.email.toLowerCase();
+            const brotherData = CONFIG.allowedBrothers[email];
+
+            if (brotherData) {
+                currentUser = {
+                    email: email,
+                    name: brotherData.name,
+                    color: brotherData.color
+                };
+                
+                document.getElementById('auth-error').classList.add('hidden');
+                document.getElementById('gate-screen').classList.add('hidden');
+                document.getElementById('app-container').classList.remove('hidden');
+                
+                // עדכון תג משתמש
+                const badge = document.getElementById('user-badge');
+                badge.innerText = currentUser.name;
+                badge.style.backgroundColor = currentUser.color;
+
+                startRealtimeListeners();
+                listenToThemeSettings();
+                loadDocumentFromGitHub();
+            } else {
+                // המשתמש מחובר לגוגל אך אינו ברשימת האחים המורשים
+                document.getElementById('auth-error').classList.remove('hidden');
+                auth.signOut();
+            }
+        }
+
+        function showGate() {
+            document.getElementById('app-container').classList.add('hidden');
+            document.getElementById('gate-screen').classList.remove('hidden');
+        }
+
+        function logout() {
+            auth.signOut().then(() => {
+                currentUser = null;
+                if (unsubscribeCategories) unsubscribeCategories();
+                if (unsubscribeTodos) unsubscribeTodos();
+                if (unsubscribeChat) unsubscribeChat();
+                if (unsubscribeFiles) unsubscribeFiles();
+                showGate();
+            });
+        }
+
+        // ==========================================
+        // 4. העלאת קבצים ועריכת רקעים (GitHub direct upload)
+        // ==========================================
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // בדיקת מגבלת גודל של 100MB
+            if (file.size > 100 * 1024 * 1024) {
+                alert("קובץ זה חורג ממגבלת ה-100MB המותרת להעלאה.");
+                return;
+            }
+
+            const destination = document.getElementById('upload-destination').value;
+            const progress = document.getElementById('upload-progress');
+            progress.classList.remove('hidden');
+
+            const reader = new FileReader();
+            reader.readAsArrayBuffer(file);
+            reader.onload = function (e) {
+                const arrayBuffer = e.target.result;
+                const base64Content = arrayBufferToBase64(arrayBuffer);
+                const safeName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+                
+                const filePath = destination === 'background' ? `assets/${safeName}` : `uploads/${safeName}`;
+                const uploadUrl = `https://api.github.com/repos/${CONFIG.github.owner}/${CONFIG.github.repo}/contents/${filePath}`;
+
+                const body = {
+                    message: `העלאת קובץ ע"י ${currentUser.name}: ${file.name}`,
+                    content: base64Content
+                };
+
+                fetch(uploadUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${CONFIG.github.token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                })
+                .then(res => {
+                    if (!res.ok) throw new Error("Upload to GitHub failed.");
+                    return res.json();
+                })
+                .then(data => {
+                    progress.classList.add('hidden');
+                    const githubFileUrl = `https://raw.githubusercontent.com/${CONFIG.github.owner}/${CONFIG.github.repo}/main/${filePath}`;
+
+                    if (destination === 'background') {
+                        // עדכון הרקע של האתר ב-Firestore
+                        db.collection('settings').doc('theme').set({
+                            backgroundImageUrl: githubFileUrl,
+                            updatedBy: currentUser.name,
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        })
+                        .then(() => alert("תמונת הרקע של האתר עודכנה בהצלחה!"));
+                    } else {
+                        // הוספת רשומה לקולקציית הקבצים המשותפים ב-Firestore
+                        db.collection('shared_files').add({
+                            name: file.name,
+                            url: githubFileUrl,
+                            uploadedBy: currentUser.name,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        })
+                        .then(() => alert("הקובץ הועלה ושותף בהצלחה!"));
+                    }
+                })
+                .catch(err => {
+                    progress.classList.add('hidden');
+                    console.error("Error uploading: ", err);
+                    alert("ההעלאה נכשלה. ודאו שטוקן ה-GitHub שלכם מוגדר כראוי.");
+                });
+            };
+        }
+
+        // המרת מערך בינארי ל-Base64 בטוח עבור קבצים גדולים
+        function arrayBufferToBase64(buffer) {
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            const len = bytes.byteLength;
+            for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return window.btoa(binary);
+        }
+
+        // האזנה לקבצים משותפים שהועלו
+        function listenToSharedFiles() {
+            if (unsubscribeFiles) unsubscribeFiles();
+
+            unsubscribeFiles = db.collection('shared_files').orderBy('createdAt', 'desc')
+                .onSnapshot(snapshot => {
+                    const list = document.getElementById('shared-files-list');
+                    list.innerHTML = '';
+
+                    if (snapshot.empty) {
+                        list.innerHTML = '<p class="text-gray-400">טרם הועלו קבצים.</p>';
+                        return;
+                    }
+
+                    snapshot.forEach(doc => {
+                        const file = doc.data();
+                        const item = document.createElement('div');
+                        item.className = "flex justify-between items-center bg-white/70 p-2 rounded-lg border border-gray-100 hover:bg-white transition";
+                        item.innerHTML = `
+                            <div class="truncate max-w-[70%]">
+                                <span class="font-semibold text-slate-700 block truncate">${file.name}</span>
+                                <span class="text-[9px] text-gray-400">הועלה ע"י: ${file.uploadedBy}</span>
+                            </div>
+                            <a href="${file.url}" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs font-bold">
+                                פתח / הורד <i class="fa-solid fa-download ml-1"></i>
+                            </a>
+                        `;
+                        list.appendChild(item);
+                    });
+                });
+        }
+
+        // ==========================================
+        // 5. ניהול משימות שיתופי בזמן אמת (Todo List)
+        // ==========================================
+        function addTodoItem() {
+            const text = document.getElementById('new-todo-text').value.trim();
+            if (!text) return;
+
+            db.collection('todos').add({
+                task: text,
+                completed: false,
+                createdBy: currentUser.name,
+                completedBy: null,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                document.getElementById('new-todo-text').value = '';
+            })
+            .catch(err => console.error("Error adding todo: ", err));
+        }
+
+        function toggleTodoStatus(todoId, currentStatus) {
+            db.collection('todos').doc(todoId).update({
+                completed: !currentStatus,
+                completedBy: !currentStatus ? currentUser.name : null
+            });
+        }
+
+        function listenToTodos() {
+            if (unsubscribeTodos) unsubscribeTodos();
+
+            unsubscribeTodos = db.collection('todos').orderBy('createdAt', 'desc')
+                .onSnapshot(snapshot => {
+                    const activeContainer = document.getElementById('todo-list-active');
+                    const completedContainer = document.getElementById('todo-list-completed');
+                    
+                    activeContainer.innerHTML = '';
+                    completedContainer.innerHTML = '';
+
+                    snapshot.forEach(doc => {
+                        const todo = doc.data();
+                        const item = document.createElement('div');
+                        item.className = "flex items-center justify-between p-3 rounded-xl bg-white shadow-sm border border-gray-100 transition";
+                        
+                        const checkedAttr = todo.completed ? 'checked' : '';
+                        const completedClass = todo.completed ? 'line-through text-gray-400' : 'text-gray-800';
+                        
+                        item.innerHTML = `
+                            <div class="flex items-center gap-3">
+                                <input type="checkbox" ${checkedAttr} onclick="toggleTodoStatus('${doc.id}', ${todo.completed})" class="w-5 h-5 rounded text-blue-600 cursor-pointer">
+                                <div>
+                                    <p class="text-sm font-medium ${completedClass}">${todo.task}</p>
+                                    <span class="text-[10px] text-gray-400">הוסף ע"י: ${todo.createdBy}</span>
+                                </div>
+                            </div>
+                            ${todo.completed && todo.completedBy ? `<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-md font-semibold">בוצע ע"י: ${todo.completedBy}</span>` : ''}
+                        `;
+
+                        if (todo.completed) {
+                            completedContainer.appendChild(item);
+                        } else {
+                            activeContainer.appendChild(item);
+                        }
+                    });
+                });
+        }
+
+        // ==========================================
+        // 6. ניהול קטגוריות ונושאי דיון
+        // ==========================================
+        function showAddCategoryModal() {
+            document.getElementById('category-modal').classList.remove('hidden');
+        }
+
+        function hideAddCategoryModal() {
+            document.getElementById('category-modal').classList.add('hidden');
+            document.getElementById('new-category-name').value = '';
+        }
+
+        function createCategory() {
+            const name = document.getElementById('new-category-name').value.trim();
+            if (!name) return;
+
+            db.collection('categories').add({
+                name: name,
+                createdBy: currentUser.name,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                hideAddCategoryModal();
+            })
+            .catch(err => console.error("Error creating category: ", err));
+        }
+
+        function listenToCategories() {
+            if (unsubscribeCategories) unsubscribeCategories();
+
+            unsubscribeCategories = db.collection('categories').orderBy('createdAt', 'asc')
+                .onSnapshot(snapshot => {
+                    const container = document.getElementById('dynamic-tabs-container');
+                    container.innerHTML = '';
+
+                    snapshot.forEach(doc => {
+                        const cat = doc.data();
+                        const tabBtn = document.createElement('button');
+                        tabBtn.id = `tab-cat-${doc.id}`;
+                        tabBtn.className = "px-4 py-3 text-sm font-bold border-b-2 border-transparent text-gray-600 hover:text-blue-600 flex items-center gap-1 transition-all duration-200";
+                        tabBtn.onclick = () => switchTab('chat', doc.id);
+                        tabBtn.innerHTML = `<i class="fa-regular fa-comments"></i> ${cat.name}`;
+                        container.appendChild(tabBtn);
+                    });
+
+                    if (currentTab === 'chat' && activeCategoryId) {
+                        switchTab('chat', activeCategoryId);
+                    }
+                });
+        }
+
+        // ==========================================
+        // 7. צ'אט סנכרוני (Realtime Chat)
+        // ==========================================
+        function listenToChatMessages(categoryId) {
+            if (unsubscribeChat) unsubscribeChat();
+
+            const container = document.getElementById('chat-messages-container');
+            container.innerHTML = '';
+
+            unsubscribeChat = db.collection('chats')
+                .where('categoryId', '==', categoryId)
+                .orderBy('timestamp', 'asc')
+                .onSnapshot(snapshot => {
+                    container.innerHTML = '';
+                    if (snapshot.empty) {
+                        container.innerHTML = '<p class="text-center text-xs text-gray-400 py-4">אין הודעות עדיין. כתבו משהו!</p>';
+                        return;
+                    }
+
+                    snapshot.forEach(doc => {
+                        const msg = doc.data();
+                        const isMe = msg.sender === currentUser.name;
+                        const color = (CONFIG.allowedBrothers[msg.senderEmail] || {}).color || '#6b7280';
+                        const card = document.createElement('div');
+                        
+                        card.className = `flex flex-col max-w-[80%] p-3 rounded-2xl shadow-sm text-sm ${
+                            isMe ? 'bg-blue-600 text-white mr-auto rounded-tl-none' : 'bg-white text-gray-800 ml-auto rounded-tr-none'
+                        }`;
+
+                        let timeString = '';
+                        if (msg.timestamp) {
+                            const date = msg.timestamp.toDate();
+                            timeString = date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+                        }
+
+                        card.innerHTML = `
+                            <span class="text-[10px] font-bold mb-1" style="color: ${isMe ? '#ffffff' : color}">
+                                ${isMe ? 'אני' : msg.sender}
+                            </span>
+                            <p class="leading-relaxed break-words">${msg.text}</p>
+                            <span class="text-[9px] text-left block mt-1 ${isMe ? 'text-blue-200' : 'text-gray-400'}">${timeString}</span>
+                        `;
+                        container.appendChild(card);
+                    });
+
+                    container.scrollTop = container.scrollHeight;
+                });
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('chat-message-input');
+            const text = input.value.trim();
+            if (!text || !activeCategoryId) return;
+
+            db.collection('chats').add({
+                categoryId: activeCategoryId,
+                sender: currentUser.name,
+                senderEmail: currentUser.email,
+                text: text,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                input.value = '';
+            })
+            .catch(err => console.error("Error sending message: ", err));
+        }
+
+        function handleChatEnter(event) {
+            if (event.key === 'Enter') {
+                sendChatMessage();
+            }
+        }
+
+        // ==========================================
+        // 8. עריכת עלון משותף (GitHub API)
+        // ==========================================
+        function initQuillEditor() {
+            quillEditor = new Quill('#editor-container', {
+                theme: 'snow',
+                modules: {
+                    toolbar: [
+                        ['bold', 'italic', 'underline'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        ['clean']
+                    ]
+                },
+                placeholder: 'הקלידו טקסטים או שירים לעלון...'
+            });
+        }
+
+        function loadDocumentFromGitHub() {
+            const path = "texts/alon.html";
+            const url = `https://api.github.com/repos/${CONFIG.github.owner}/${CONFIG.github.repo}/contents/${path}`;
+            
+            fetch(url, {
+                headers: {
+                    'Authorization': `token ${CONFIG.github.token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            })
+            .then(res => {
+                if (!res.ok) throw new Error("File not found");
+                return res.json();
+            })
+            .then(data => {
+                currentFileSha = data.sha;
+                const decodedContent = decodeURIComponent(atob(data.content).split('').map(c => {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                quillEditor.root.innerHTML = decodedContent;
+            })
+            .catch(err => {
+                console.warn("קובץ עלון טרם נוצר ב-GitHub או שטוקן הגישה אינו מוגדר.");
+            });
+        }
+
+        function saveDocumentToGitHub() {
+            const htmlContent = quillEditor.root.innerHTML;
+            const base64Content = btoa(unescape(encodeURIComponent(htmlContent)));
+            const path = "texts/alon.html";
+            const url = `https://api.github.com/repos/${CONFIG.github.owner}/${CONFIG.github.repo}/contents/${path}`;
+
+            const body = {
+                message: `עודכן ע"י ${currentUser.name}`,
+                content: base64Content,
+                sha: currentFileSha
+            };
+
+            fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${CONFIG.github.token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.content && data.content.sha) {
+                    currentFileSha = data.content.sha;
+                    alert("הגרסה נשמרה ב-GitHub בהצלחה!");
+                }
+            })
+            .catch(err => {
+                console.error("שגיאה בשמירה ל-GitHub: ", err);
+            });
+        }
+
+        // ==========================================
+        // 9. תפעול כללי, תפריטים וספירה לאחור
+        // ==========================================
+        function initCountdown() {
+            const cd = document.getElementById('countdown');
+            const updateTime = () => {
+                const now = new Date().getTime();
+                const diff = CONFIG.eventDate - now;
+
+                if (diff < 0) {
+                    cd.innerHTML = "מזל טוב! האירוע התחיל! 🎉";
+                    return;
+                }
+
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+                cd.innerHTML = `
+                    <div class="px-2 py-1 bg-white rounded shadow-sm"><span>${days}</span> <span class="text-[10px] text-gray-500 block">ימים</span></div>
+                    <div class="px-2 py-1 bg-white rounded shadow-sm"><span>${hours}</span> <span class="text-[10px] text-gray-500 block">שעות</span></div>
+                    <div class="px-2 py-1 bg-white rounded shadow-sm"><span>${minutes}</span> <span class="text-[10px] text-gray-500 block">דקות</span></div>
+                `;
+            };
+            updateTime();
+            setInterval(updateTime, 60000);
+        }
+
+        function switchTab(tabId, categoryId = null) {
+            currentTab = tabId;
+            activeCategoryId = categoryId;
+            
+            document.querySelectorAll('nav button').forEach(btn => {
+                btn.classList.remove('border-blue-600', 'text-blue-600');
+                btn.classList.add('text-gray-600', 'border-transparent');
+            });
+            
+            if (categoryId) {
+                const activeBtn = document.getElementById(`tab-cat-${categoryId}`);
+                if (activeBtn) activeBtn.classList.add('border-blue-600', 'text-blue-600');
+            } else {
+                const activeBtn = document.getElementById(`tab-${tabId}`);
+                if (activeBtn) activeBtn.classList.add('border-blue-600', 'text-blue-600');
+            }
+
+            document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
+
+            if (tabId === 'chat' && categoryId) {
+                document.getElementById('panel-chat').classList.remove('hidden');
+                listenToChatMessages(categoryId);
+            } else {
+                document.getElementById(`panel-${tabId}`).classList.remove('hidden');
+            }
+        }
+
+        function startRealtimeListeners() {
+            listenToCategories();
+            listenToTodos();
+            listenToSharedFiles();
+        }
+    </script>
+</body>
+</html>
