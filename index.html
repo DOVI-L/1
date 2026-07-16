@@ -207,32 +207,25 @@
 
     </div>
 
-    <!-- Firebase SDK (Compat) -->
+<!-- Firebase SDK (Compat Version) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
     <script>
         // ==========================================
-        // 1. הגדרות ורשימת אחים מורשים (Configuration)
+        // 1. הגדרות וקונפיגורציה (Configuration)
         // ==========================================
         const CONFIG = {
-            eventDate: new Date("Nov 15, 2025 19:30:00").getTime(),
-            // מפה המקשרת בין אימייל הגוגל של האח לבין השם והצבע שלו
-            allowedBrothers: {
-                "reuven@gmail.com": { name: "ראובן", color: "#3b82f6" },
-                "shimon@gmail.com": { name: "שמעון", color: "#10b981" },
-                "levi@gmail.com": { name: "לוי", color: "#f59e0b" },
-                "yehuda@gmail.com": { name: "יהודה", color: "#ef4444" }
-            },
+            eventDate: new Date("Nov 15, 2025 19:30:00").getTime(), // תאריך יעד לאירוע
             github: {
                 token: "YOUR_GITHUB_PERSONAL_ACCESS_TOKEN", // החליפו בטוקן ה-GitHub שלכם
-                owner: "YOUR_GITHUB_USERNAME",
-                repo: "YOUR_REPO_NAME"
+                owner: "YOUR_GITHUB_USERNAME",              // שם המשתמש שלכם ב-GitHub
+                repo: "YOUR_REPO_NAME"                      // שם המאגר שלכם ב-GitHub
             }
         };
 
-        // קונפיגורציית פיירבייס שסיפקת
+        // פרטי החיבור שלכם לפיירבייס (מעודכן לפרויקט שסיפקתם)
         const firebaseConfig = {
             apiKey: "AIzaSyBvYn-lVJoDpLTRJqiNIiYd12yEcfBgMz8",
             authDomain: "chatuna-2f886.firebaseapp.com",
@@ -242,30 +235,32 @@
             appId: "1:993368698482:web:68a719b033a17f4a245ceb"
         };
 
-        // אתחול Firebase
+        // אתחול פיירבייס
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const auth = firebase.auth();
 
-        let currentUser = null; // ישמור את אובייקט האח הפעיל
+        // משתני מערכת גלובליים
+        let currentUser = null; // ישמור את פרטי האח המחובר (שם, אימייל, צבע)
         let currentTab = "todo";
         let activeCategoryId = null;
         let quillEditor = null;
         let currentFileSha = null;
 
+        // משתנים לשמירת מאזינים פעילים (לצורך ניקוי בהתנתקות)
         let unsubscribeCategories = null;
         let unsubscribeTodos = null;
         let unsubscribeChat = null;
         let unsubscribeFiles = null;
 
         // ==========================================
-        // 2. טעינה מושהית (Lazy Loading) ומניעת איטיות
+        // 2. טעינה ראשונית וטעינה מושהית (Lazy Loading)
         // ==========================================
         window.addEventListener('DOMContentLoaded', () => {
             initCountdown();
             initQuillEditor();
             
-            // טעינת תמונות כבדות רק לאחר טעינת שלד האתר
+            // טעינת תמונות וקבצי לוגו כבדים רק לאחר טעינת הדף הראשי
             setTimeout(() => {
                 const gateLogo = document.getElementById('gate-logo');
                 if (gateLogo) {
@@ -274,7 +269,7 @@
                 }
             }, 300);
 
-            // האזנה למצב החיבור של המשתמש בגוגל
+            // האזנה למצב החיבור של המשתמש מול פיירבייס
             auth.onAuthStateChanged(user => {
                 if (user) {
                     handleUserAuthentication(user);
@@ -284,7 +279,7 @@
             });
         });
 
-        // האזנה להגדרת רקע דינמי מהמסד (Firestore)
+        // האזנה להגדרת רקע דינמי מתוך ה-Database
         function listenToThemeSettings() {
             db.collection('settings').doc('theme').onSnapshot(doc => {
                 if (doc.exists && doc.data().backgroundImageUrl) {
@@ -293,17 +288,19 @@
                     document.body.style.backgroundPosition = 'center';
                     document.body.style.backgroundAttachment = 'fixed';
                 } else {
-                    // רקע מקומי כברירת מחדל במידה ולא הועלה רקע לשרת
+                    // רקע מקומי כברירת מחדל במידה ולא נמצאה הגדרה במסד
                     document.body.style.backgroundImage = "url('assets/1.jpg')";
                     document.body.style.backgroundSize = 'cover';
                     document.body.style.backgroundPosition = 'center';
                     document.body.style.backgroundAttachment = 'fixed';
                 }
+            }, err => {
+                console.warn("לא ניתן לקרוא הגדרות עיצוב מהמסד, משתמש ברקע ברירת המחדל.", err);
             });
         }
 
         // ==========================================
-        // 3. אימות והתחברות אוטומטית (Google Auth)
+        // 3. אימות כניסה מול פיירבייס (Authentication)
         // ==========================================
         function signInWithGoogle() {
             const provider = new firebase.auth.GoogleAuthProvider();
@@ -312,38 +309,48 @@
                     handleUserAuthentication(result.user);
                 })
                 .catch(err => {
-                    console.error("שגיאה בהתחברות גוגל: ", err);
+                    console.error("שגיאה בהתחברות לגוגל: ", err);
+                    alert("התחברות נכשלה. יש לוודא שהדומיין מוגדר כמורשה בפיירבייס.");
                 });
         }
 
         function handleUserAuthentication(firebaseUser) {
             const email = firebaseUser.email.toLowerCase();
-            const brotherData = CONFIG.allowedBrothers[email];
 
-            if (brotherData) {
-                currentUser = {
-                    email: email,
-                    name: brotherData.name,
-                    color: brotherData.color
-                };
-                
-                document.getElementById('auth-error').classList.add('hidden');
-                document.getElementById('gate-screen').classList.add('hidden');
-                document.getElementById('app-container').classList.remove('hidden');
-                
-                // עדכון תג משתמש
-                const badge = document.getElementById('user-badge');
-                badge.innerText = currentUser.name;
-                badge.style.backgroundColor = currentUser.color;
+            // פנייה לטבלת המורשים בפיירבייס כדי לזהות מי האח המחובר
+            db.collection('allowed_users').doc(email).get()
+                .then(doc => {
+                    if (doc.exists) {
+                        const brotherData = doc.data();
+                        currentUser = {
+                            email: email,
+                            name: brotherData.name,
+                            color: brotherData.color || '#3b82f6'
+                        };
+                        
+                        document.getElementById('auth-error').classList.add('hidden');
+                        document.getElementById('gate-screen').classList.add('hidden');
+                        document.getElementById('app-container').classList.remove('hidden');
+                        
+                        // עדכון תג המשתמש העליון
+                        const badge = document.getElementById('user-badge');
+                        badge.innerText = currentUser.name;
+                        badge.style.backgroundColor = currentUser.color;
 
-                startRealtimeListeners();
-                listenToThemeSettings();
-                loadDocumentFromGitHub();
-            } else {
-                // המשתמש מחובר לגוגל אך אינו ברשימת האחים המורשים
-                document.getElementById('auth-error').classList.remove('hidden');
-                auth.signOut();
-            }
+                        // הפעלת מאזיני הנתונים בזמן אמת
+                        startRealtimeListeners();
+                        listenToThemeSettings();
+                        loadDocumentFromGitHub();
+                    } else {
+                        // המשתמש מחובר לגוגל אך אינו מופיע ברשימת המורשים שיצרתם ב-Firestore
+                        document.getElementById('auth-error').classList.remove('hidden');
+                        auth.signOut();
+                    }
+                })
+                .catch(err => {
+                    console.error("שגיאה בשליפת הרשאות משתמש: ", err);
+                    document.getElementById('auth-error').classList.remove('hidden');
+                });
         }
 
         function showGate() {
@@ -363,125 +370,7 @@
         }
 
         // ==========================================
-        // 4. העלאת קבצים ועריכת רקעים (GitHub direct upload)
-        // ==========================================
-        function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            // בדיקת מגבלת גודל של 100MB
-            if (file.size > 100 * 1024 * 1024) {
-                alert("קובץ זה חורג ממגבלת ה-100MB המותרת להעלאה.");
-                return;
-            }
-
-            const destination = document.getElementById('upload-destination').value;
-            const progress = document.getElementById('upload-progress');
-            progress.classList.remove('hidden');
-
-            const reader = new FileReader();
-            reader.readAsArrayBuffer(file);
-            reader.onload = function (e) {
-                const arrayBuffer = e.target.result;
-                const base64Content = arrayBufferToBase64(arrayBuffer);
-                const safeName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-                
-                const filePath = destination === 'background' ? `assets/${safeName}` : `uploads/${safeName}`;
-                const uploadUrl = `https://api.github.com/repos/${CONFIG.github.owner}/${CONFIG.github.repo}/contents/${filePath}`;
-
-                const body = {
-                    message: `העלאת קובץ ע"י ${currentUser.name}: ${file.name}`,
-                    content: base64Content
-                };
-
-                fetch(uploadUrl, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `token ${CONFIG.github.token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(body)
-                })
-                .then(res => {
-                    if (!res.ok) throw new Error("Upload to GitHub failed.");
-                    return res.json();
-                })
-                .then(data => {
-                    progress.classList.add('hidden');
-                    const githubFileUrl = `https://raw.githubusercontent.com/${CONFIG.github.owner}/${CONFIG.github.repo}/main/${filePath}`;
-
-                    if (destination === 'background') {
-                        // עדכון הרקע של האתר ב-Firestore
-                        db.collection('settings').doc('theme').set({
-                            backgroundImageUrl: githubFileUrl,
-                            updatedBy: currentUser.name,
-                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                        })
-                        .then(() => alert("תמונת הרקע של האתר עודכנה בהצלחה!"));
-                    } else {
-                        // הוספת רשומה לקולקציית הקבצים המשותפים ב-Firestore
-                        db.collection('shared_files').add({
-                            name: file.name,
-                            url: githubFileUrl,
-                            uploadedBy: currentUser.name,
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                        })
-                        .then(() => alert("הקובץ הועלה ושותף בהצלחה!"));
-                    }
-                })
-                .catch(err => {
-                    progress.classList.add('hidden');
-                    console.error("Error uploading: ", err);
-                    alert("ההעלאה נכשלה. ודאו שטוקן ה-GitHub שלכם מוגדר כראוי.");
-                });
-            };
-        }
-
-        // המרת מערך בינארי ל-Base64 בטוח עבור קבצים גדולים
-        function arrayBufferToBase64(buffer) {
-            let binary = '';
-            const bytes = new Uint8Array(buffer);
-            const len = bytes.byteLength;
-            for (let i = 0; i < len; i++) {
-                binary += String.fromCharCode(bytes[i]);
-            }
-            return window.btoa(binary);
-        }
-
-        // האזנה לקבצים משותפים שהועלו
-        function listenToSharedFiles() {
-            if (unsubscribeFiles) unsubscribeFiles();
-
-            unsubscribeFiles = db.collection('shared_files').orderBy('createdAt', 'desc')
-                .onSnapshot(snapshot => {
-                    const list = document.getElementById('shared-files-list');
-                    list.innerHTML = '';
-
-                    if (snapshot.empty) {
-                        list.innerHTML = '<p class="text-gray-400">טרם הועלו קבצים.</p>';
-                        return;
-                    }
-
-                    snapshot.forEach(doc => {
-                        const file = doc.data();
-                        const item = document.createElement('div');
-                        item.className = "flex justify-between items-center bg-white/70 p-2 rounded-lg border border-gray-100 hover:bg-white transition";
-                        item.innerHTML = `
-                            <div class="truncate max-w-[70%]">
-                                <span class="font-semibold text-slate-700 block truncate">${file.name}</span>
-                                <span class="text-[9px] text-gray-400">הועלה ע"י: ${file.uploadedBy}</span>
-                            </div>
-                            <a href="${file.url}" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs font-bold">
-                                פתח / הורד <i class="fa-solid fa-download ml-1"></i>
-                            </a>
-                        `;
-                        list.appendChild(item);
-                    });
-                });
-        }
-
-        // ==========================================
-        // 5. ניהול משימות שיתופי בזמן אמת (Todo List)
+        // 4. ניהול משימות שיתופי בזמן אמת (Todo List)
         // ==========================================
         function addTodoItem() {
             const text = document.getElementById('new-todo-text').value.trim();
@@ -543,11 +432,11 @@
                             activeContainer.appendChild(item);
                         }
                     });
-                });
+                }, err => console.error("Error fetching todos: ", err));
         }
 
         // ==========================================
-        // 6. ניהול קטגוריות ונושאי דיון
+        // 5. ניהול קטגוריות וצ'אט סנכרוני (Realtime Chat)
         // ==========================================
         function showAddCategoryModal() {
             document.getElementById('category-modal').classList.remove('hidden');
@@ -594,12 +483,9 @@
                     if (currentTab === 'chat' && activeCategoryId) {
                         switchTab('chat', activeCategoryId);
                     }
-                });
+                }, err => console.error("Error fetching categories: ", err));
         }
 
-        // ==========================================
-        // 7. צ'אט סנכרוני (Realtime Chat)
-        // ==========================================
         function listenToChatMessages(categoryId) {
             if (unsubscribeChat) unsubscribeChat();
 
@@ -618,8 +504,10 @@
 
                     snapshot.forEach(doc => {
                         const msg = doc.data();
-                        const isMe = msg.sender === currentUser.name;
-                        const color = (CONFIG.allowedBrothers[msg.senderEmail] || {}).color || '#6b7280';
+                        const isMe = msg.senderEmail === currentUser.email;
+                        
+                        // קבלת צבע ייחודי לפי המשתמש
+                        const senderColor = msg.senderColor || '#6b7280';
                         const card = document.createElement('div');
                         
                         card.className = `flex flex-col max-w-[80%] p-3 rounded-2xl shadow-sm text-sm ${
@@ -633,7 +521,7 @@
                         }
 
                         card.innerHTML = `
-                            <span class="text-[10px] font-bold mb-1" style="color: ${isMe ? '#ffffff' : color}">
+                            <span class="text-[10px] font-bold mb-1" style="color: ${isMe ? '#ffffff' : senderColor}">
                                 ${isMe ? 'אני' : msg.sender}
                             </span>
                             <p class="leading-relaxed break-words">${msg.text}</p>
@@ -643,7 +531,7 @@
                     });
 
                     container.scrollTop = container.scrollHeight;
-                });
+                }, err => console.error("Error fetching messages: ", err));
         }
 
         function sendChatMessage() {
@@ -655,6 +543,7 @@
                 categoryId: activeCategoryId,
                 sender: currentUser.name,
                 senderEmail: currentUser.email,
+                senderColor: currentUser.color,
                 text: text,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             })
@@ -671,7 +560,7 @@
         }
 
         // ==========================================
-        // 8. עריכת עלון משותף (GitHub API)
+        // 6. עריכת עלון משותף (GitHub API)
         // ==========================================
         function initQuillEditor() {
             quillEditor = new Quill('#editor-container', {
@@ -683,7 +572,7 @@
                         ['clean']
                     ]
                 },
-                placeholder: 'הקלידו טקסטים או שירים לעלון...'
+                placeholder: 'הקלידו טקסטים, נאומים או שירים לעלון...'
             });
         }
 
@@ -709,7 +598,7 @@
                 quillEditor.root.innerHTML = decodedContent;
             })
             .catch(err => {
-                console.warn("קובץ עלון טרם נוצר ב-GitHub או שטוקן הגישה אינו מוגדר.");
+                console.warn("קובץ עלון עדיין לא נוצר ב-GitHub, או שטוקן הגישה לא הוגדר.");
             });
         }
 
@@ -742,11 +631,128 @@
             })
             .catch(err => {
                 console.error("שגיאה בשמירה ל-GitHub: ", err);
+                alert("שגיאה בשמירה. ודאו שהגדרות ה-API שלכם תקינות.");
             });
         }
 
         // ==========================================
-        // 9. תפעול כללי, תפריטים וספירה לאחור
+        // 7. העלאת קבצים ועריכת רקעים (GitHub File Upload)
+        // ==========================================
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // בדיקת מגבלת גודל של 100MB
+            if (file.size > 100 * 1024 * 1024) {
+                alert("קובץ זה חורג ממגבלת ה-100MB המותרת.");
+                return;
+            }
+
+            const destination = document.getElementById('upload-destination').value;
+            const progress = document.getElementById('upload-progress');
+            progress.classList.remove('hidden');
+
+            const reader = new FileReader();
+            reader.readAsArrayBuffer(file);
+            reader.onload = function (e) {
+                const arrayBuffer = e.target.result;
+                const base64Content = arrayBufferToBase64(arrayBuffer);
+                const safeName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+                
+                const filePath = destination === 'background' ? `assets/${safeName}` : `uploads/${safeName}`;
+                const uploadUrl = `https://api.github.com/repos/${CONFIG.github.owner}/${CONFIG.github.repo}/contents/${filePath}`;
+
+                const body = {
+                    message: `העלאת קובץ ע"י ${currentUser.name}: ${file.name}`,
+                    content: base64Content
+                };
+
+                fetch(uploadUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${CONFIG.github.token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                })
+                .then(res => {
+                    if (!res.ok) throw new Error("Upload failed.");
+                    return res.json();
+                })
+                .then(data => {
+                    progress.classList.add('hidden');
+                    const githubFileUrl = `https://raw.githubusercontent.com/${CONFIG.github.owner}/${CONFIG.github.repo}/main/${filePath}`;
+
+                    if (destination === 'background') {
+                        // עדכון הרקע של האתר ב-Firestore
+                        db.collection('settings').doc('theme').set({
+                            backgroundImageUrl: githubFileUrl,
+                            updatedBy: currentUser.name,
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        })
+                        .then(() => alert("תמונת הרקע של האתר עודכנה בהצלחה!"));
+                    } else {
+                        // הוספת קובץ לרשימה המשותפת ב-Firestore
+                        db.collection('shared_files').add({
+                            name: file.name,
+                            url: githubFileUrl,
+                            uploadedBy: currentUser.name,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        })
+                        .then(() => alert("הקובץ הועלה בהצלחה לשיתוף!"));
+                    }
+                })
+                .catch(err => {
+                    progress.classList.add('hidden');
+                    console.error("Error uploading: ", err);
+                    alert("ההעלאה נכשלה. אנא ודאו שטוקן ה-GitHub שלכם מוגדר כהלכה.");
+                });
+            };
+        }
+
+        function arrayBufferToBase64(buffer) {
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            const len = bytes.byteLength;
+            for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return window.btoa(binary);
+        }
+
+        function listenToSharedFiles() {
+            if (unsubscribeFiles) unsubscribeFiles();
+
+            unsubscribeFiles = db.collection('shared_files').orderBy('createdAt', 'desc')
+                .onSnapshot(snapshot => {
+                    const list = document.getElementById('shared-files-list');
+                    list.innerHTML = '';
+
+                    if (snapshot.empty) {
+                        list.innerHTML = '<p class="text-gray-400">טרם שותפו קבצים.</p>';
+                        return;
+                    }
+
+                    snapshot.forEach(doc => {
+                        const file = doc.data();
+                        const item = document.createElement('div');
+                        item.className = "flex justify-between items-center bg-white/70 p-2 rounded-lg border border-gray-100 hover:bg-white transition";
+                        item.innerHTML = `
+                            <div class="truncate max-w-[70%]">
+                                <span class="font-semibold text-slate-700 block truncate">${file.name}</span>
+                                <span class="text-[9px] text-gray-400">הועלה ע"י: ${file.uploadedBy}</span>
+                            </div>
+                            <a href="${file.url}" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs font-bold">
+                                פתח <i class="fa-solid fa-download ml-1"></i>
+                            </a>
+                        `;
+                        list.appendChild(item);
+                    });
+                }, err => console.error("Error loading shared files: ", err));
+        }
+
+        // ==========================================
+        // 8. תפעול כללי, תפריטים וספירה לאחור
         // ==========================================
         function initCountdown() {
             const cd = document.getElementById('countdown');
